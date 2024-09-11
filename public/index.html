@@ -6,7 +6,7 @@
     <title>Renombrar Comprobantes Bancarios</title> <!-- Título actualizado -->
 
     <!-- Favicon -->
-    <link rel="icon" href="public/file_pdf_download_icon.ico" type="image/x-icon">
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
 
     <!-- Fuente de Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -50,13 +50,20 @@
             font-weight: 600;
         }
 
+        /* Contenedor del campo de selección de archivos */
+        .file-input-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 400px;
+            margin: 0 auto 25px;
+            width: 100%;
+        }
+
         /* Input de archivos */
         input[type="file"] {
-            display: block;
-            margin: 0 auto 25px auto;
             padding: 12px;
-            width: 100%;
-            max-width: 400px;
+            width: 80%;
             font-size: 16px;
             border: 2px dashed #90a4ae;
             border-radius: 12px;
@@ -69,6 +76,13 @@
         input[type="file"]:hover {
             border-color: #64b5f6;
             background-color: #e3f2fd;
+        }
+
+        /* Contador de archivos */
+        .file-count {
+            color: #555;
+            font-size: 14px;
+            font-weight: 500;
         }
 
         /* Botón de enviar */
@@ -97,7 +111,7 @@
             box-shadow: none;
         }
 
-        /* Listado de archivos */
+        /* Listado de archivos con límite y scroll */
         .file-list {
             margin-top: 30px;
             font-size: 15px;
@@ -105,6 +119,9 @@
             text-align: left;
             max-width: 400px;
             margin: 0 auto;
+            height: auto;
+            max-height: 200px; /* Limitar la altura del contenedor */
+            overflow-y: auto; /* Añadir scroll cuando exceda el límite */
         }
 
         .file-list li {
@@ -114,6 +131,8 @@
             border-radius: 10px;
             margin-bottom: 10px;
             box-shadow: 0 3px 7px rgba(0, 0, 0, 0.07);
+            width: 100%;
+            max-width: 400px;
         }
 
         .file-list li:last-child {
@@ -124,13 +143,28 @@
         .file-list li:hover {
             background-color: #e1f5fe;
         }
+        
+        header {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+        }
+
+        header img {
+            height: 60px; /* Ajusta el tamaño del logo */
+        }
     </style>
 </head>
 <body>
+    <header>
+        <img src="logo_GE.png" alt="Logo de la empresa">
+    </header>
     <div class="container">
         <h1>Renombrar Comprobantes Bancarios</h1>
         <form id="uploadForm" enctype="multipart/form-data">
-            <input type="file" id="pdfFiles" name="pdfs" multiple accept="application/pdf">
+            <div class="file-input-container">
+                <input type="file" id="pdfFiles" name="pdfs" multiple accept="application/pdf">
+            </div>
             <button type="submit">Subir PDFs</button>
         </form>
         <ul id="fileList" class="file-list"></ul>
@@ -140,10 +174,13 @@
     <script>
         document.getElementById('pdfFiles').addEventListener('change', function () {
             const fileList = document.getElementById('fileList');
+            const files = this.files;
             fileList.innerHTML = '';
-            for (const file of this.files) {
+
+            for (const file of files) {
                 fileList.innerHTML += `<li>${file.name}</li>`;
             }
+
         });
 
         document.getElementById('uploadForm').addEventListener('submit', async function (e) {
