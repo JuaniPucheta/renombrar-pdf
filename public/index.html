@@ -3,119 +3,81 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Renombrar PDF</title>
+    <title>Subir Múltiples PDFs</title>
     <style>
-        /* Estilos para centrar y mejorar la UI */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Roboto', sans-serif;
-        }
-
+        /* Estilos básicos */
         body {
-            height: 100vh;
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
             display: flex;
             justify-content: center;
             align-items: center;
-            background-color: #f5f5f5;
+            height: 100vh;
         }
 
         .container {
-            background-color: white;
-            padding: 30px;
-            border-radius: 15px;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 10px;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 400px;
-            text-align: center;
         }
 
         h1 {
-            margin-bottom: 20px;
+            font-size: 20px;
             color: #333;
-            font-size: 1.5em;
         }
 
         input[type="file"] {
-            display: none;
-        }
-
-        label {
-            display: inline-block;
-            padding: 10px 20px;
-            background-color: #4285F4;
-            color: white;
-            border: none;
-            border-radius: 25px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-
-        label:hover {
-            background-color: #357ae8;
+            margin-bottom: 20px;
         }
 
         button {
-            margin-top: 20px;
             padding: 10px 20px;
-            background-color: #34A853;
+            background-color: #28a745;
             color: white;
             border: none;
-            border-radius: 25px;
+            border-radius: 5px;
             cursor: pointer;
-            transition: background-color 0.3s ease;
         }
 
         button:hover {
-            background-color: #2c8c47;
+            background-color: #218838;
         }
 
-        .file-name {
-            margin-top: 10px;
+        .file-list {
+            margin-top: 20px;
+            font-size: 14px;
             color: #555;
-            font-size: 0.9em;
-        }
-
-        .error-message {
-            margin-top: 10px;
-            color: red;
-            font-size: 0.9em;
         }
     </style>
 </head>
 <body>
-
     <div class="container">
-        <h1>Renombrar PDF con nombre y apellido</h1>
-        <form id="pdfForm" enctype="multipart/form-data">
-            <input type="file" id="pdfFile" name="pdf" accept="application/pdf">
-            <label for="pdfFile">Seleccionar archivo PDF</label>
-            <div class="file-name" id="fileName">Ningún archivo seleccionado</div>
-            <div class="error-message" id="errorMessage"></div>
-            <button type="submit">Subir PDF</button>
+        <h1>Subir Múltiples PDFs</h1>
+        <form id="uploadForm" enctype="multipart/form-data">
+            <input type="file" id="pdfFiles" name="pdfs" multiple accept="application/pdf">
+            <button type="submit">Subir PDFs</button>
         </form>
+        <div id="fileList" class="file-list"></div>
     </div>
 
     <script>
-        document.getElementById('pdfFile').addEventListener('change', function() {
-            const fileName = this.files[0] ? this.files[0].name : 'Ningún archivo seleccionado';
-            document.getElementById('fileName').textContent = fileName;
+        document.getElementById('pdfFiles').addEventListener('change', function () {
+            const fileList = document.getElementById('fileList');
+            fileList.innerHTML = '';
+            for (const file of this.files) {
+                fileList.innerHTML += `<li>${file.name}</li>`;
+            }
         });
 
-        document.getElementById('pdfForm').addEventListener('submit', async function(e) {
+        document.getElementById('uploadForm').addEventListener('submit', async function (e) {
             e.preventDefault();
             const formData = new FormData();
-            const fileInput = document.getElementById('pdfFile');
-            const errorMessage = document.getElementById('errorMessage');
-            errorMessage.textContent = '';
+            const files = document.getElementById('pdfFiles').files;
 
-            if (!fileInput.files[0]) {
-                errorMessage.textContent = 'Por favor selecciona un archivo PDF.';
-                return;
+            for (const file of files) {
+                formData.append('pdfs', file);
             }
-
-            formData.append('pdf', fileInput.files[0]);
 
             try {
                 const response = await fetch('/upload', {
@@ -125,19 +87,20 @@
 
                 if (response.ok) {
                     const blob = await response.blob();
+                    const downloadUrl = window.URL.createObjectURL(blob);
                     const link = document.createElement('a');
-                    link.href = window.URL.createObjectURL(blob);
-                    link.download = fileInput.files[0].name; // Cambia por el nombre correcto
+                    link.href = downloadUrl;
+                    link.download = 'archivos_renombrados.zip'; // Si estás usando la opción ZIP
+                    document.body.appendChild(link);
                     link.click();
+                    link.remove();
                 } else {
-                    const errorData = await response.json();
-                    errorMessage.textContent = errorData.error || 'Error desconocido.';
+                    console.error('Error al subir los archivos.');
                 }
             } catch (err) {
-                errorMessage.textContent = 'Error al intentar subir el archivo.';
+                console.error('Error:', err);
             }
         });
     </script>
-
 </body>
 </html>

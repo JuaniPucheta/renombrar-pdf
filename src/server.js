@@ -3,16 +3,17 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 const pdfParse = require('pdf-parse');
+const archiver = require('archiver'); // Si decides empaquetar en ZIP
 
 const app = express();
 
 // Servir archivos estáticos desde la carpeta "public"
 app.use(express.static('public'));
 
-// Configuración de multer para almacenar el PDF subido
+// Configuración de multer para almacenar múltiples archivos PDF subidos
 const upload = multer({
     dest: 'uploads/', 
-    limits: { fileSize: 5 * 1024 * 1024 }, // Límite de tamaño de archivo 5MB
+    limits: { fileSize: 5 * 1024 * 1024 }, // Límite de tamaño de archivo 5MB por archivo
     fileFilter: (req, file, cb) => {
         // Solo aceptar archivos PDF
         if (file.mimetype === 'application/pdf') {
@@ -23,67 +24,76 @@ const upload = multer({
     }
 });
 
-// Ruta para manejar la subida de archivos
-app.post('/upload', upload.single('pdf'), async (req, res) => {
-    if (!req.file) {
+// Ruta para manejar la subida de múltiples archivos
+app.post('/upload', upload.array('pdfs', 10), async (req, res) => { // 'pdfs' es el nombre del input en el formulario
+    if (!req.files || req.files.length === 0) {
         return res.status(400).json({ error: 'No se ha subido ningún archivo.' });
     }
 
-    const filePath = req.file.path;
+    let archivosProcesados = [];
 
-    try {
-        // Leer el archivo PDF y extraer el texto
-        const dataBuffer = fs.readFileSync(filePath);
-        const data = await pdfParse(dataBuffer);
+    // Procesar cada archivo PDF subido
+    for (let file of req.files) {
+        const filePath = file.path;
 
-        const text = data.text;
+        try {
+            // Leer el archivo PDF y extraer el texto
+            const dataBuffer = fs.readFileSync(filePath);
+            const data = await pdfParse(dataBuffer);
+            const text = data.text;
 
-        // Ajustar la expresión regular para capturar el nombre completo del beneficiario
-        const regexBeneficiario = /Beneficiario\s*([A-ZÑÁÉÍÓÚ\s]+)(?=\s*CUIT|$)/i; // Capturar el nombre completo y detenerse en CUIT
-        const match = text.match(regexBeneficiario);
+            // Ajustar la expresión regular para capturar el nombre completo del beneficiario
+            const regexBeneficiario = /Beneficiario\s*([A-ZÑÁÉÍÓÚ\s]+)(?=\s*CUIT|$)/i;
+            const match = text.match(regexBeneficiario);
 
-        if (match && match[1]) {
-            const beneficiario = match[1].trim().replace(/\s+/g, ' '); // Limpiar el nombre completo
+            if (match && match[1]) {
+                const beneficiario = match[1].trim().replace(/\s+/g, ' ');
+                const newFileName = `${beneficiario}.pdf`;
+                const newPath = path.join('uploads', newFileName);
 
-            console.log('Beneficiario:', beneficiario); // Verificar si captura el nombre completo
+                // Renombrar el archivo
+                fs.renameSync(filePath, newPath);
 
-            // Definir el nuevo nombre del archivo con el nombre completo del beneficiario
-            const newFileName = `${beneficiario}.pdf`;
-            console.log('Nuevo nombre de archivo:', newFileName);
-            const newPath = path.join('uploads', newFileName);
-            console.log('Nuevo path:', newPath);
-
-            // Renombrar el archivo antes de descargarlo
-            fs.rename(filePath, newPath, (err) => {
-                if (err) {
-                    console.error('Error al renombrar el archivo:', err);
-                    return res.status(500).json({ error: 'Error al renombrar el archivo.' });
-                }
-
-                // Forzar la descarga desde la nueva ruta renombrada
-                const absolutePath = path.resolve(newPath);  // Convertir a ruta absoluta
-                res.setHeader('Content-Disposition', `attachment; filename="${newFileName}"`);
-                res.setHeader('Content-Type', 'application/pdf');
-
-                res.sendFile(absolutePath, (err) => {
-                    if (err) {
-                        console.error('Error al enviar el archivo renombrado:', err);
-                        return res.status(500).json({ error: 'Error al enviar el archivo renombrado.' });
-                    }
-                    console.log(`Archivo renombrado y enviado como: ${newFileName}`);
-                });
-            });
-        } else {
-            // El beneficiario no fue encontrado en el archivo PDF
-            fs.unlink(filePath, (err) => {
-                if (err) console.error('Error al eliminar el archivo original:', err);
-            });
-            return res.status(400).json({ error: 'Beneficiario no encontrado en el archivo PDF.' });
+                archivosProcesados.push(newPath); // Guardamos la ruta del archivo procesado
+            } else {
+                fs.unlinkSync(filePath); // Eliminar archivo si no se encontró el beneficiario
+                return res.status(400).json({ error: `Beneficiario no encontrado en el archivo: ${file.originalname}` });
+            }
+        } catch (err) {
+            console.error('Error al procesar el archivo:', err);
+            return res.status(500).json({ error: 'Error procesando los archivos PDF.' });
         }
-    } catch (err) {
-        console.error('Error al procesar el archivo:', err);
-        res.status(500).json({ error: 'Error procesando el archivo PDF.' });
     }
+
+    // Si prefieres descargar uno por uno (descomenta esto si no deseas usar ZIP)
+    /*
+    for (let archivo of archivosProcesados) {
+        res.download(archivo);  // Descarga cada archivo renombrado
+    }
+    */
+
+    // Si prefieres empaquetar todos los archivos en un ZIP:
+    const zipFilePath = path.join('uploads', 'archivos_renombrados.zip');
+    const output = fs.createWriteStream(zipFilePath);
+    const archive = archiver('zip', { zlib: { level: 9 } });
+
+    output.on('close', () => {
+        console.log(`Archivo ZIP creado: ${zipFilePath} (${archive.pointer()} bytes)`);
+        res.download(zipFilePath, 'archivos_renombrados.zip');
+    });
+
+    archive.on('error', (err) => {
+        throw err;
+    });
+
+    archive.pipe(output);
+
+    // Añadir los archivos renombrados al archivo ZIP
+    archivosProcesados.forEach((archivo) => {
+        archive.file(archivo, { name: path.basename(archivo) });
+    });
+
+    archive.finalize(); // Finalizar el ZIP
 });
 
 // Middleware para manejar rutas no encontradas
