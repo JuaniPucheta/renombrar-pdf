@@ -25,7 +25,7 @@ const upload = multer({
 });
 
 // Ruta para manejar la subida de múltiples archivos
-app.post('/upload', upload.array('pdfs', 10), async (req, res) => { // 'pdfs' es el nombre del input en el formulario
+app.post('/upload', upload.array('pdfs'), async (req, res) => { // 'pdfs' es el nombre del input en el formulario
     if (!req.files || req.files.length === 0) {
         return res.status(400).json({ error: 'No se ha subido ningún archivo.' });
     }
