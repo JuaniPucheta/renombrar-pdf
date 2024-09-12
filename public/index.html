@@ -6,7 +6,7 @@
     <title>Renombrar Comprobantes Bancarios</title> <!-- Título actualizado -->
 
     <!-- Favicon -->
-    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    <link rel="icon" href="global_ico.png" type="image/x-icon">
 
     <!-- Fuente de Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -22,6 +22,7 @@
             align-items: center;
             height: 100vh;
             margin: 0;
+            position: relative;
         }
 
         /* Contenedor principal */
@@ -78,13 +79,6 @@
             background-color: #e3f2fd;
         }
 
-        /* Contador de archivos */
-        .file-count {
-            color: #555;
-            font-size: 14px;
-            font-weight: 500;
-        }
-
         /* Botón de enviar */
         button {
             padding: 14px 24px;
@@ -109,6 +103,23 @@
         button:active {
             transform: translateY(1px);
             box-shadow: none;
+        }
+
+        /* Spinner */
+        .spinner {
+            border: 6px solid #f3f3f3;
+            border-top: 6px solid #00bcd4;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+            display: none; /* Oculto inicialmente */
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         /* Listado de archivos con límite y scroll */
@@ -143,7 +154,7 @@
         .file-list li:hover {
             background-color: #e1f5fe;
         }
-        
+
         header {
             position: absolute;
             top: 10px;
@@ -167,6 +178,7 @@
             </div>
             <button type="submit">Subir PDFs</button>
         </form>
+        <div id="spinner" class="spinner"></div> <!-- Spinner -->
         <ul id="fileList" class="file-list"></ul>
     </div>
 
@@ -185,6 +197,11 @@
 
         document.getElementById('uploadForm').addEventListener('submit', async function (e) {
             e.preventDefault();
+            
+            // Mostrar el spinner al hacer submit
+            const spinner = document.getElementById('spinner');
+            spinner.style.display = 'block';
+
             const formData = new FormData();
             const files = document.getElementById('pdfFiles').files;
 
@@ -207,11 +224,16 @@
                     document.body.appendChild(link);
                     link.click();
                     link.remove();
+
+                    // Ocultar el spinner cuando termina la descarga
+                    spinner.style.display = 'none';
                 } else {
                     console.error('Error al subir los archivos.');
+                    spinner.style.display = 'none'; // Ocultar spinner en caso de error
                 }
             } catch (err) {
                 console.error('Error:', err);
+                spinner.style.display = 'none'; // Ocultar spinner en caso de error
             }
         });
     </script>
