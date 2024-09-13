@@ -228,7 +228,8 @@
                     // Ocultar el spinner cuando termina la descarga
                     spinner.style.display = 'none';
                 } else {
-                    console.error('Error al subir los archivos.');
+                    const errorText = await response.text(); 
+                    console.error(`Error al subir los archivos: ${errorText} (Status: ${response.status})`);
                     spinner.style.display = 'none'; // Ocultar spinner en caso de error
                 }
             } catch (err) {
