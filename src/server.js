@@ -4,8 +4,11 @@ const fs = require('fs');
 const path = require('path');
 const pdfParse = require('pdf-parse');
 const archiver = require('archiver'); // Si decides empaquetar en ZIP
+const cors = require('cors');
 
 const app = express();
+
+app.use(cors());
 
 // Servir archivos estáticos desde la carpeta "public"
 app.use(express.static('public'));
