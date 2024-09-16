@@ -48,7 +48,7 @@ app.post('/upload', upload.array('pdfs'), async (req, res) => { // 'pdfs' es el 
             const text = data.text
 
             // Ajustar la expresión regular para capturar el nombre completo del beneficiario
-            const regexBeneficiario = /Beneficiario\s*([A-ZÑÁÉÍÓÚ\s]+)(?=\s*CUIT|$)/i
+            const regexBeneficiario = /Beneficiario\s*([\w\s&.,-]+)(?=\s*CUIT|$)/i;
             const match = text.match(regexBeneficiario)
 
             if (match && match[1]) {
