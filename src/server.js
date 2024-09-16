@@ -5,17 +5,52 @@ const path = require('path');
 const pdfParse = require('pdf-parse');
 const archiver = require('archiver');
 const cors = require('cors');
+const morgan = require('morgan'); // Morgan para logging
+const swaggerUi = require('swagger-ui-express'); // Swagger para la documentación
+const swaggerJsdoc = require('swagger-jsdoc'); // Swagger para la documentación
 
 const app = express();
 
+// Configurar Morgan para logging
+app.use(morgan('dev'));
+
+// Configurar CORS
 app.use(cors({
     origin: '*'  // Permitir todos los orígenes
 }));
 
-// Servir archivos estáticos desde la carpeta "public"
+// Configurar la carpeta pública para servir archivos estáticos
 app.use(express.static('public'));
 
-// Configuración de multer para almacenar múltiples archivos PDF subidos
+// Configuración de Swagger
+const swaggerOptions = {
+    swaggerDefinition: {
+        openapi: '3.0.0',
+        info: {
+            title: 'API de Renombramiento de Comprobantes',
+            version: '1.0.0',
+            description: 'API para renombrar comprobantes de pago y descargarlos en un archivo ZIP',
+            contact: {
+                name: 'Soporte de la API',
+                email: 'soporte@miempresa.com'
+            }
+        },
+        servers: [
+            {
+                url: 'http://localhost:3000', // Cambia la URL según tu entorno
+                description: 'Servidor local de desarrollo'
+            }
+        ]
+    },
+    apis: ['./src/server.js'], // Especifica la ubicación de tu archivo o archivos con rutas anotadas
+};
+
+const swaggerDocs = swaggerJsdoc(swaggerOptions);
+
+// Ruta de la documentación de Swagger
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
+
+// Configuración de multer para manejar múltiples archivos PDF
 const upload = multer({
     dest: 'uploads/', 
     limits: { fileSize: 5 * 1024 * 1024 }, // Límite de tamaño de archivo 5MB por archivo
@@ -32,7 +67,32 @@ const upload = multer({
 // Crear una estructura para llevar la cuenta de beneficiarios y CUIT
 let archivoCounter = {};
 
-// Ruta para manejar la subida de múltiples archivos
+// Ruta para manejar la subida de múltiples archivos PDF
+/**
+ * @swagger
+ * /upload:
+ *   post:
+ *     summary: Subir y renombrar archivos PDF
+ *     description: Sube múltiples archivos PDF y los renombra según el nombre del beneficiario y el CUIT, devolviendo un archivo ZIP.
+ *     tags: [Comprobantes]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               pdfs:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                   format: binary
+ *     responses:
+ *       200:
+ *         description: Archivos procesados y devueltos en un ZIP
+ *       400:
+ *         description: Error en la subida o procesamiento de archivos
+ */
 app.post('/upload', upload.array('pdfs'), async (req, res) => { 
     if (!req.files || req.files.length === 0) {
         return res.status(400).json({ error: 'No se ha subido ningún archivo.' });
@@ -50,9 +110,9 @@ app.post('/upload', upload.array('pdfs'), async (req, res) => {
             const data = await pdfParse(dataBuffer);
             const text = data.text;
 
-            // Ajustar la expresión regular para capturar el nombre completo del beneficiario y el CUIT
+            // Ajustar la expresión regular para capturar el nombre completo del beneficiario y el CUIT o CUIL
             const regexBeneficiario = /Beneficiario\s*([\w\s&.,-]+)(?=\s*CUIT|$)/i;
-            const regexCuit = /CUIT o CUIL\s*(\d{11})/; // Para capturar el CUIT o CUIL con formato de 11 dígitos
+            const regexCuit = /CUIT o CUIL\s*(\d{11})/; // Buscar CUIT o CUIL con formato de 11 dígitos
 
             const matchBeneficiario = text.match(regexBeneficiario);
             const matchCuit = text.match(regexCuit);
