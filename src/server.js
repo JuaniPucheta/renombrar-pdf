@@ -5,47 +5,20 @@ const path = require('path');
 const pdfParse = require('pdf-parse');
 const archiver = require('archiver');
 const cors = require('cors');
-const morgan = require('morgan'); // Morgan para logging
-const swaggerUi = require('swagger-ui-express'); // Swagger para la documentación
-const swaggerJsdoc = require('swagger-jsdoc'); // Swagger para la documentación
+const morgan = require('morgan'); 
+
+const { swaggerUi, swaggerDocs } = require('../config/swagger.js'); 
 
 const app = express();
 
-// Configurar Morgan para logging
 app.use(morgan('dev'));
 
-// Configurar CORS
 app.use(cors({
     origin: '*'  // Permitir todos los orígenes
 }));
 
-// Configurar la carpeta pública para servir archivos estáticos
+// Servir archivos estáticos desde la carpeta "public"
 app.use(express.static('public'));
-
-// Configuración de Swagger
-const swaggerOptions = {
-    swaggerDefinition: {
-        openapi: '3.0.0',
-        info: {
-            title: 'API de Renombramiento de Comprobantes',
-            version: '1.0.0',
-            description: 'API para renombrar comprobantes de pago y descargarlos en un archivo ZIP',
-            contact: {
-                name: 'Soporte de la API',
-                email: 'soporte@miempresa.com'
-            }
-        },
-        servers: [
-            {
-                url: 'http://localhost:3000', // Cambia la URL según tu entorno
-                description: 'Servidor local de desarrollo'
-            }
-        ]
-    },
-    apis: ['./src/server.js'], // Especifica la ubicación de tu archivo o archivos con rutas anotadas
-};
-
-const swaggerDocs = swaggerJsdoc(swaggerOptions);
 
 // Ruta de la documentación de Swagger
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
@@ -55,7 +28,6 @@ const upload = multer({
     dest: 'uploads/', 
     limits: { fileSize: 5 * 1024 * 1024 }, // Límite de tamaño de archivo 5MB por archivo
     fileFilter: (req, file, cb) => {
-        // Solo aceptar archivos PDF
         if (file.mimetype === 'application/pdf') {
             cb(null, true);
         } else {
@@ -67,7 +39,6 @@ const upload = multer({
 // Crear una estructura para llevar la cuenta de beneficiarios y CUIT
 let archivoCounter = {};
 
-// Ruta para manejar la subida de múltiples archivos PDF
 /**
  * @swagger
  * /upload:
@@ -93,6 +64,8 @@ let archivoCounter = {};
  *       400:
  *         description: Error en la subida o procesamiento de archivos
  */
+
+// Ruta para manejar la subida de múltiples archivos PDF
 app.post('/upload', upload.array('pdfs'), async (req, res) => { 
     if (!req.files || req.files.length === 0) {
         return res.status(400).json({ error: 'No se ha subido ningún archivo.' });
@@ -147,7 +120,7 @@ app.post('/upload', upload.array('pdfs'), async (req, res) => {
                 // Renombrar el archivo
                 fs.renameSync(filePath, newPath);
 
-                archivosProcesados.push(newPath); // Guardamos la ruta del archivo procesado
+                archivosProcesados.push(newPath); 
             } else {
                 fs.unlinkSync(filePath); // Eliminar archivo si no se encontró el beneficiario o CUIT
                 return res.status(400).json({ error: `Beneficiario o CUIT no encontrado en el archivo: ${file.originalname}` });
