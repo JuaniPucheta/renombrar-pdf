@@ -84,7 +84,7 @@ app.post('/upload', upload.array('pdfs'), async (req, res) => {
             const text = data.text;
 
             // Ajustar la expresión regular para capturar el nombre completo del beneficiario y el CUIT o CUIL
-            const regexBeneficiario = /Beneficiario\s*([\w\s&.,-]+)(?=\s*CUIT|$)/i;
+            const regexBeneficiario = /Beneficiario\s*([\w\s&.,()-]+)(?=\s*CUIT|$)/i;
             const regexCuit = /CUIT o CUIL\s*(\d{11})/; // Buscar CUIT o CUIL con formato de 11 dígitos
 
             const matchBeneficiario = text.match(regexBeneficiario);
